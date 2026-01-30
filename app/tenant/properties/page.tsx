@@ -1,15 +1,40 @@
 "use client";
 
-import { Badge, Button, Card, H1, Input, Muted, type BadgeTone } from "@/components/ui";
-import { mockTenant } from "@/lib/mock";
+import { Badge, Button, Card, H1, H2, Input, Muted, type BadgeTone } from "@/components/ui";
+import { mockListings, mockTenant } from "@/lib/mock";
+import { getListingRequests, saveListingRequests } from "@/lib/requests";
 import type { PropertyStatus } from "@/lib/types";
 import { useMemo, useState } from "react";
 
+type ListingActionState = {
+  viewingDate?: string;
+  offerPrice?: string;
+  moveInDate?: string;
+  lastAction?: "viewing" | "offer";
+  agentNotified?: boolean;
+};
+
 export default function TenantProperties() {
-  const [query, setQuery] = useState("");
+  const [listingQuery, setListingQuery] = useState("");
+  const [trackedQuery, setTrackedQuery] = useState("");
+  const [listingActions, setListingActions] = useState<Record<string, ListingActionState>>({});
+
+  const listings = useMemo(() => {
+    const q = listingQuery.trim().toLowerCase();
+    if (!q) return mockListings;
+    return mockListings.filter(
+      (listing) =>
+        listing.address.toLowerCase().includes(q) ||
+        listing.mlsNumber.toLowerCase().includes(q) ||
+        `${listing.address}, ${listing.city}`.toLowerCase().includes(q),
+    );
+  }, [listingQuery]);
+
   const rows = useMemo(() => {
-    return mockTenant.properties.filter((p) => p.address.toLowerCase().includes(query.toLowerCase()));
-  }, [query]);
+    const q = trackedQuery.trim().toLowerCase();
+    if (!q) return mockTenant.properties;
+    return mockTenant.properties.filter((p) => p.address.toLowerCase().includes(q));
+  }, [trackedQuery]);
 
   const statusTone = (s: PropertyStatus): BadgeTone => {
     if (s === "Rejected") return "red";
@@ -18,22 +43,216 @@ export default function TenantProperties() {
     return "blue";
   };
 
+  const updateListingAction = (id: string, patch: Partial<ListingActionState>) => {
+    setListingActions((prev) => ({ ...prev, [id]: { ...prev[id], ...patch } }));
+  };
+
+  const submitViewingRequest = (listingId: string) => {
+    const listing = mockListings.find((item) => item.id === listingId);
+    if (!listing) return;
+    const requestDate = new Date().toISOString().slice(0, 10);
+    const existing = getListingRequests();
+    const next = [
+      ...existing,
+      {
+        id: `r${existing.length + 1}`,
+        listingId,
+        listingAddress: `${listing.address}, ${listing.city}, ${listing.province}`,
+        tenantName: mockTenant.fullName,
+        type: "Viewing" as const,
+        createdAt: requestDate,
+        status: "Pending" as const,
+        preferredViewingDate: listingActions[listingId]?.viewingDate || undefined,
+      },
+    ];
+    saveListingRequests(next);
+    updateListingAction(listingId, { lastAction: "viewing", agentNotified: true });
+  };
+
+  const submitOfferRequest = (listingId: string) => {
+    const listing = mockListings.find((item) => item.id === listingId);
+    if (!listing) return;
+    const requestDate = new Date().toISOString().slice(0, 10);
+    const existing = getListingRequests();
+    const next = [
+      ...existing,
+      {
+        id: `r${existing.length + 1}`,
+        listingId,
+        listingAddress: `${listing.address}, ${listing.city}, ${listing.province}`,
+        tenantName: mockTenant.fullName,
+        type: "Offer" as const,
+        createdAt: requestDate,
+        status: "Submitted" as const,
+        offerPrice: listingActions[listingId]?.offerPrice
+          ? Number(listingActions[listingId]?.offerPrice)
+          : undefined,
+        moveInDate: listingActions[listingId]?.moveInDate || undefined,
+        stage: "New" as const,
+      },
+    ];
+    saveListingRequests(next);
+    updateListingAction(listingId, { lastAction: "offer", agentNotified: true });
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <H1>Properties</H1>
-          <Muted>Track requests, viewings, applications, and outcomes.</Muted>
+          <H1>Find a Property</H1>
+          <Muted>Search by MLS number or address, request a viewing, or apply instantly.</Muted>
         </div>
-        <Button variant="secondary">Request Viewing (later)</Button>
+        <Button variant="secondary">Saved Searches (later)</Button>
       </div>
 
       <Card>
-        <div className="flex items-center gap-3">
-          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search address..." />
-          <Button variant="ghost" onClick={() => setQuery("")}>
+        <div className="flex flex-wrap items-center gap-3">
+          <Input
+            value={listingQuery}
+            onChange={(e) => setListingQuery(e.target.value)}
+            placeholder="Search MLS or address..."
+          />
+          <Button variant="ghost" onClick={() => setListingQuery("")}>
             Clear
           </Button>
+        </div>
+        <div className="mt-4 grid gap-4">
+          {listings.map((listing) => (
+            <Card key={listing.id} className="border border-neutral-200">
+              {listingActions[listing.id]?.agentNotified ? (
+                <div className="mb-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                  Agent notified for{" "}
+                  {listingActions[listing.id]?.lastAction === "offer" ? "offer request" : "viewing request"}.
+                </div>
+              ) : null}
+              <div className="grid gap-4 lg:grid-cols-[1.1fr_1fr]">
+                <div className="space-y-3">
+                  <div className="overflow-hidden rounded-2xl">
+                    <img
+                      src={listing.images[0]}
+                      alt={`${listing.address} primary photo`}
+                      className="h-56 w-full object-cover"
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {listing.images.slice(1).map((src) => (
+                      <img
+                        key={src}
+                        src={src}
+                        alt={`${listing.address} gallery`}
+                        className="h-24 w-full rounded-xl object-cover"
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <H2>
+                        {listing.address}, {listing.city}
+                      </H2>
+                      <Muted>MLS: {listing.mlsNumber}</Muted>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xl font-semibold">${listing.rent.toLocaleString()}/mo</div>
+                      <Muted>{listing.daysOnMarket} days on market</Muted>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 text-sm text-neutral-700">
+                    <Badge tone="blue">{listing.beds} beds</Badge>
+                    <Badge tone="blue">{listing.baths} baths</Badge>
+                    <Badge tone="blue">{listing.sqft.toLocaleString()} sqft</Badge>
+                    <Badge tone="neutral">{listing.homeType}</Badge>
+                    <Badge tone="neutral">Parking: {listing.parking}</Badge>
+                  </div>
+
+                  <Muted>{listing.description}</Muted>
+
+                  <div className="grid gap-2 md:grid-cols-2">
+                    <div className="rounded-xl border border-neutral-100 bg-neutral-50 p-3 text-sm">
+                      <div className="text-neutral-500">Key Facts</div>
+                      <div className="mt-2 space-y-1 text-neutral-700">
+                        <div>Year built: {listing.yearBuilt ?? "N/A"}</div>
+                        <div>Type: {listing.homeType}</div>
+                        <div>Parking: {listing.parking}</div>
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-neutral-100 bg-neutral-50 p-3 text-sm">
+                      <div className="text-neutral-500">Highlights</div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {listing.features.map((feature) => (
+                          <Badge key={feature} tone="neutral">
+                            {feature}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-neutral-100 bg-neutral-50 p-4">
+                    <div className="text-sm font-medium">Take Action</div>
+                    <div className="mt-3 grid gap-3 md:grid-cols-2">
+                      <div className="space-y-2 rounded-xl border bg-white p-3">
+                        <div className="text-sm font-medium">Request a Viewing</div>
+                        <Input
+                          type="date"
+                          value={listingActions[listing.id]?.viewingDate ?? ""}
+                          onChange={(e) => updateListingAction(listing.id, { viewingDate: e.target.value })}
+                        />
+                        <Button
+                          onClick={() => submitViewingRequest(listing.id)}
+                        >
+                          Submit Viewing Request
+                        </Button>
+                      </div>
+                      <div className="space-y-2 rounded-xl border bg-white p-3">
+                        <div className="text-sm font-medium">Request an Offer</div>
+                        <Input
+                          type="number"
+                          placeholder="Offer price"
+                          value={listingActions[listing.id]?.offerPrice ?? ""}
+                          onChange={(e) => updateListingAction(listing.id, { offerPrice: e.target.value })}
+                        />
+                        <Input
+                          type="date"
+                          value={listingActions[listing.id]?.moveInDate ?? ""}
+                          onChange={(e) => updateListingAction(listing.id, { moveInDate: e.target.value })}
+                        />
+                        <Button
+                          variant="secondary"
+                          onClick={() => submitOfferRequest(listing.id)}
+                        >
+                          Submit Offer Request
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button variant="ghost">Share</Button>
+                      <Button variant="ghost">Save</Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))}
+          {listings.length === 0 ? <Muted>No listings match that search yet.</Muted> : null}
+        </div>
+      </Card>
+
+      <Card>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <H2>Property Tracking</H2>
+            <Muted>Track requests, viewings, applications, and outcomes.</Muted>
+          </div>
+          <div className="flex w-full max-w-sm items-center gap-2">
+            <Input value={trackedQuery} onChange={(e) => setTrackedQuery(e.target.value)} placeholder="Search address..." />
+            <Button variant="ghost" onClick={() => setTrackedQuery("")}>
+              Clear
+            </Button>
+          </div>
         </div>
 
         <div className="mt-4 overflow-x-auto">

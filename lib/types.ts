@@ -38,6 +38,45 @@ export type PropertyItem = {
   lastUpdate: string;
 };
 
+export type OfferStage = "New" | "Drafting" | "Sent to Listing" | "Countered" | "Accepted" | "Rejected";
+
+export type ListingRequestType = "Viewing" | "Offer";
+
+export type ListingRequestStatus = "Pending" | "Scheduled" | "Submitted" | "Closed";
+
+export type ListingRequest = {
+  id: string;
+  listingId: string;
+  listingAddress: string;
+  tenantName: string;
+  type: ListingRequestType;
+  createdAt: string;
+  status: ListingRequestStatus;
+  preferredViewingDate?: string;
+  offerPrice?: number;
+  moveInDate?: string;
+  stage?: OfferStage;
+};
+
+export type ListingItem = {
+  id: string;
+  mlsNumber: string;
+  address: string;
+  city: string;
+  province: string;
+  rent: number;
+  beds: number;
+  baths: number;
+  sqft: number;
+  homeType: string;
+  yearBuilt?: number;
+  parking: string;
+  daysOnMarket: number;
+  description: string;
+  features: string[];
+  images: string[];
+};
+
 export type TenantProfile = {
   id: string;
   fullName: string;

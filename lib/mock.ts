@@ -1,4 +1,4 @@
-import type { AgentProfile, AIAnalysis, ClientRow, TenantProfile } from "./types";
+import type { AgentProfile, AIAnalysis, ClientRow, ListingItem, ListingRequest, TenantProfile } from "./types";
 
 export const mockAgent: AgentProfile = {
   id: "agent_1",
@@ -34,7 +34,6 @@ export const mockTenant: TenantProfile = {
     { type: "Letter of Employment", required: true, uploaded: true },
     { type: "Rental Application (PDF)", required: true, uploaded: false, note: "Fillable PDF not uploaded yet" },
     { type: "Notice of Assessment (Optional)", required: false, uploaded: false },
-    { type: "Immigration Document (If applicable)", required: false, uploaded: false },
   ],
   properties: [
     {
@@ -57,6 +56,115 @@ export const mockTenant: TenantProfile = {
     },
   ],
 };
+
+export const mockListings: ListingItem[] = [
+  {
+    id: "l1",
+    mlsNumber: "C8421134",
+    address: "12 King St W",
+    city: "Toronto",
+    province: "ON",
+    rent: 2950,
+    beds: 2,
+    baths: 2,
+    sqft: 890,
+    homeType: "Condo",
+    yearBuilt: 2016,
+    parking: "1 underground",
+    daysOnMarket: 9,
+    description:
+      "Bright corner suite with floor-to-ceiling windows, open-concept kitchen, and a wraparound balcony. Walk to PATH, TTC, and the waterfront.",
+    features: ["Balcony", "Ensuite laundry", "Concierge", "Gym", "Rooftop deck"],
+    images: [
+      "https://images.unsplash.com/photo-1502005097973-6a7082348e28?auto=format&fit=crop&w=1400&q=80",
+      "https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=1400&q=80",
+      "https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=1400&q=80",
+    ],
+  },
+  {
+    id: "l2",
+    mlsNumber: "W8429011",
+    address: "88 Lakeshore Blvd",
+    city: "Toronto",
+    province: "ON",
+    rent: 3200,
+    beds: 1,
+    baths: 1,
+    sqft: 675,
+    homeType: "Condo",
+    yearBuilt: 2019,
+    parking: "None",
+    daysOnMarket: 3,
+    description:
+      "Modern lakeview suite with sleek finishes and built-in appliances. Steps to the boardwalk, cafes, and transit.",
+    features: ["Lake view", "Smart lock", "Bike storage", "Party room", "Pet friendly"],
+    images: [
+      "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=1400&q=80",
+      "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1400&q=80",
+      "https://images.unsplash.com/photo-1481277542470-605612bd2d61?auto=format&fit=crop&w=1400&q=80",
+    ],
+  },
+  {
+    id: "l3",
+    mlsNumber: "E8435120",
+    address: "452 Gerrard St E",
+    city: "Toronto",
+    province: "ON",
+    rent: 3450,
+    beds: 3,
+    baths: 2,
+    sqft: 1180,
+    homeType: "Townhome",
+    yearBuilt: 2008,
+    parking: "1 garage",
+    daysOnMarket: 14,
+    description:
+      "Renovated townhome with a private patio, chef's kitchen, and finished basement flex space. Ideal for roommates or small families.",
+    features: ["Private patio", "Finished basement", "Gas range", "Storage locker", "Transit nearby"],
+    images: [
+      "https://images.unsplash.com/photo-1507089947368-19c1da9775ae?auto=format&fit=crop&w=1400&q=80",
+      "https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=1400&q=80",
+      "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1400&q=80",
+    ],
+  },
+];
+
+export const mockListingRequests: ListingRequest[] = [
+  {
+    id: "r1",
+    listingId: "l1",
+    listingAddress: "12 King St W, Toronto, ON",
+    tenantName: "Zain Tariq",
+    type: "Viewing",
+    createdAt: "2026-01-27",
+    status: "Pending",
+    preferredViewingDate: "2026-02-03",
+  },
+  {
+    id: "r2",
+    listingId: "l2",
+    listingAddress: "88 Lakeshore Blvd, Toronto, ON",
+    tenantName: "Zain Tariq",
+    type: "Offer",
+    createdAt: "2026-01-26",
+    status: "Submitted",
+    offerPrice: 3100,
+    moveInDate: "2026-03-01",
+    stage: "Drafting",
+  },
+  {
+    id: "r3",
+    listingId: "l3",
+    listingAddress: "452 Gerrard St E, Toronto, ON",
+    tenantName: "Sarah Chen",
+    type: "Offer",
+    createdAt: "2026-01-25",
+    status: "Submitted",
+    offerPrice: 3350,
+    moveInDate: "2026-02-15",
+    stage: "Sent to Listing",
+  },
+];
 
 export const mockAI: AIAnalysis = {
   risk: "Yellow",

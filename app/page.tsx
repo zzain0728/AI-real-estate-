@@ -31,7 +31,7 @@ export default function Home() {
         </Card>
       </div>
 
-      <div className="mt-8 grid gap-4 md:grid-cols-3">
+      <div className="mt-8 grid gap-4 md:grid-cols-2">
         <Card>
           <div className="text-sm font-semibold">Tenants</div>
           <Muted>Upload required documents, request viewings, apply to multiple properties, and track statuses.</Muted>
@@ -39,10 +39,6 @@ export default function Home() {
         <Card>
           <div className="text-sm font-semibold">Agents</div>
           <Muted>Manage clients, run AI analysis, generate offers, share applications, and export CSV.</Muted>
-        </Card>
-        <Card>
-          <div className="text-sm font-semibold">Landlords and Listing Agents</div>
-          <Muted>View a password-protected tenant summary page with property tracking and key documents.</Muted>
         </Card>
       </div>
     </main>

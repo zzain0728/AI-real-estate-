@@ -40,7 +40,10 @@ export default function TenantDocuments() {
                   />
                   Choose File
                 </label>
-                <Button variant="ghost" onClick={() => setUploaded((prev) => ({ ...prev, [doc.type]: false }))}>
+                <Button
+                  variant="ghost"
+                  onClick={() => setUploaded((prev) => ({ ...prev, [doc.type]: false }))}
+                >
                   Remove
                 </Button>
               </div>
