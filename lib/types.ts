@@ -38,7 +38,7 @@ export type PropertyItem = {
   lastUpdate: string;
 };
 
-export type OfferStage = "New" | "Drafting" | "Sent to Listing" | "Countered" | "Accepted" | "Rejected";
+export type OfferStage = "Submitted" | "In Review" | "Submitted to Landlord" | "Accepted" | "Rejected";
 
 export type ListingRequestType = "Viewing" | "Offer";
 

@@ -24,7 +24,11 @@ export default function Offers() {
     setRequests(getListingRequests());
     const onStorage = () => setRequests(getListingRequests());
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    window.addEventListener("listing-requests-updated", onStorage);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("listing-requests-updated", onStorage);
+    };
   }, []);
 
   const updateStage = (id: string, stage: OfferStage) => {
@@ -91,13 +95,12 @@ export default function Offers() {
                     {r.type === "Offer" ? (
                       <select
                         className="rounded-xl border px-2 py-1 text-sm"
-                        value={r.stage ?? "New"}
+                        value={r.stage ?? "Submitted"}
                         onChange={(e) => updateStage(r.id, e.target.value as OfferStage)}
                       >
-                        <option value="New">New</option>
-                        <option value="Drafting">Drafting</option>
-                        <option value="Sent to Listing">Sent to Listing</option>
-                        <option value="Countered">Countered</option>
+                        <option value="Submitted">Submitted</option>
+                        <option value="In Review">In Review</option>
+                        <option value="Submitted to Landlord">Submitted to Landlord</option>
                         <option value="Accepted">Accepted</option>
                         <option value="Rejected">Rejected</option>
                       </select>

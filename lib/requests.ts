@@ -2,6 +2,7 @@ import { mockListingRequests } from "@/lib/mock";
 import type { ListingRequest } from "@/lib/types";
 
 const STORAGE_KEY = "ai-real-estate:listings:requests";
+const EVENT_NAME = "listing-requests-updated";
 
 export function getListingRequests(): ListingRequest[] {
   if (typeof window === "undefined") return mockListingRequests;
@@ -23,6 +24,7 @@ export function saveListingRequests(requests: ListingRequest[]) {
   if (typeof window === "undefined") return;
   try {
     window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(requests));
+    window.dispatchEvent(new CustomEvent(EVENT_NAME));
   } catch {
     // no-op
   }

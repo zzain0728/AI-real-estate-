@@ -150,7 +150,7 @@ export const mockListingRequests: ListingRequest[] = [
     status: "Submitted",
     offerPrice: 3100,
     moveInDate: "2026-03-01",
-    stage: "Drafting",
+    stage: "In Review",
   },
   {
     id: "r3",
@@ -162,7 +162,7 @@ export const mockListingRequests: ListingRequest[] = [
     status: "Submitted",
     offerPrice: 3350,
     moveInDate: "2026-02-15",
-    stage: "Sent to Listing",
+    stage: "Submitted to Landlord",
   },
 ];
 

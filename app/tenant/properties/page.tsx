@@ -3,7 +3,7 @@
 import { Badge, Button, Card, H1, H2, Input, Muted, type BadgeTone } from "@/components/ui";
 import { mockTenant } from "@/lib/mock";
 import { getListingRequests, saveListingRequests } from "@/lib/requests";
-import type { ListingItem, PropertyStatus } from "@/lib/types";
+import type { ListingItem, ListingRequest, PropertyStatus } from "@/lib/types";
 import { useEffect, useMemo, useState } from "react";
 
 type ListingActionState = {
@@ -65,6 +65,7 @@ export default function TenantProperties() {
   const [listings, setListings] = useState<ListingItem[]>([]);
   const [listingLoading, setListingLoading] = useState(false);
   const [listingError, setListingError] = useState<string | null>(null);
+  const [requests, setRequests] = useState<ListingRequest[]>([]);
 
   useEffect(() => {
     const q = listingQuery.trim();
@@ -102,6 +103,10 @@ export default function TenantProperties() {
     return mockTenant.properties.filter((p) => p.address.toLowerCase().includes(q));
   }, [trackedQuery]);
 
+  const requestRows = useMemo(() => {
+    return requests.filter((r) => r.tenantName === mockTenant.fullName);
+  }, [requests]);
+
   const statusTone = (s: PropertyStatus): BadgeTone => {
     if (s === "Rejected") return "red";
     if (s === "Accepted") return "green";
@@ -112,6 +117,17 @@ export default function TenantProperties() {
   const updateListingAction = (id: string, patch: Partial<ListingActionState>) => {
     setListingActions((prev) => ({ ...prev, [id]: { ...prev[id], ...patch } }));
   };
+
+  useEffect(() => {
+    setRequests(getListingRequests());
+    const onStorage = () => setRequests(getListingRequests());
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("listing-requests-updated", onStorage);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("listing-requests-updated", onStorage);
+    };
+  }, []);
 
   const submitViewingRequest = (listingId: string) => {
     const listing = listings.find((item) => item.id === listingId);
@@ -133,6 +149,7 @@ export default function TenantProperties() {
     ];
     saveListingRequests(next);
     updateListingAction(listingId, { lastAction: "viewing", agentNotified: true });
+    setRequests(next);
   };
 
   const submitOfferRequest = (listingId: string) => {
@@ -154,11 +171,12 @@ export default function TenantProperties() {
           ? Number(listingActions[listingId]?.offerPrice)
           : undefined,
         moveInDate: listingActions[listingId]?.moveInDate || undefined,
-        stage: "New" as const,
+        stage: "Submitted" as const,
       },
     ];
     saveListingRequests(next);
     updateListingAction(listingId, { lastAction: "offer", agentNotified: true });
+    setRequests(next);
   };
 
   return (
@@ -310,16 +328,10 @@ export default function TenantProperties() {
       </Card>
 
       <Card>
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <H2>Property Tracking</H2>
-            <Muted>Track requests, viewings, applications, and outcomes.</Muted>
-          </div>
-          <div className="flex w-full max-w-sm items-center gap-2">
-            <Input value={trackedQuery} onChange={(e) => setTrackedQuery(e.target.value)} placeholder="Search address..." />
-            <Button variant="ghost" onClick={() => setTrackedQuery("")}>
-              Clear
-            </Button>
+            <H2>My Requests</H2>
+            <Muted>Review the viewings and offers you have submitted to your agent.</Muted>
           </div>
         </div>
 
@@ -327,32 +339,50 @@ export default function TenantProperties() {
           <table className="w-full text-sm">
             <thead className="text-left text-neutral-600">
               <tr>
-                <th className="py-2">Address</th>
-                <th className="py-2">Rent</th>
-                <th className="py-2">Status</th>
-                <th className="py-2">Dates</th>
+                <th className="py-2">Type</th>
+                <th className="py-2">Listing</th>
+                <th className="py-2">Details</th>
+                <th className="py-2">Status / Stage</th>
+                <th className="py-2">Submitted</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((p) => (
-                <tr key={p.id} className="border-t">
-                  <td className="py-2">{p.address}</td>
-                  <td className="py-2">${p.rent.toLocaleString()}</td>
+              {requestRows.map((r) => (
+                <tr key={r.id} className="border-t">
                   <td className="py-2">
-                    <Badge tone={statusTone(p.status)}>{p.status}</Badge>
+                    <Badge tone={r.type === "Offer" ? "blue" : "yellow"}>{r.type}</Badge>
                   </td>
-                  <td className="py-2 text-neutral-700">
-                    <div>Req: {p.dateRequested ?? "-"}</div>
-                    <div>Viewed: {p.dateViewed ?? "-"}</div>
-                    <div>Applied: {p.dateApplied ?? "-"}</div>
-                    <div className="text-xs text-neutral-500">Last: {p.lastUpdate}</div>
+                  <td className="py-2">{r.listingAddress}</td>
+                  <td className="py-2">
+                    {r.type === "Offer" ? (
+                      <div>
+                        <div>${r.offerPrice?.toLocaleString() ?? "-"}</div>
+                        <div className="text-xs text-neutral-500">{r.moveInDate ?? "-"}</div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="text-xs text-neutral-500">Preferred</div>
+                        <div>{r.preferredViewingDate ?? "-"}</div>
+                      </div>
+                    )}
                   </td>
+                  <td className="py-2">
+                    {r.type === "Offer" ? (
+                      <Badge tone="neutral">{r.stage ?? "Submitted"}</Badge>
+                    ) : (
+                      <Badge tone="neutral">{r.status}</Badge>
+                    )}
+                  </td>
+                  <td className="py-2">{r.createdAt}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+          {requestRows.length === 0 ? <Muted className="mt-3">No viewing or offer requests yet.</Muted> : null}
         </div>
       </Card>
+
+      
     </div>
   );
 }
