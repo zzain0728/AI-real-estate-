@@ -1,10 +1,10 @@
 "use client";
 
 import { Badge, Button, Card, H1, H2, Input, Muted, type BadgeTone } from "@/components/ui";
-import { mockListings, mockTenant } from "@/lib/mock";
+import { mockTenant } from "@/lib/mock";
 import { getListingRequests, saveListingRequests } from "@/lib/requests";
-import type { PropertyStatus } from "@/lib/types";
-import { useMemo, useState } from "react";
+import type { ListingItem, PropertyStatus } from "@/lib/types";
+import { useEffect, useMemo, useState } from "react";
 
 type ListingActionState = {
   viewingDate?: string;
@@ -14,20 +14,86 @@ type ListingActionState = {
   agentNotified?: boolean;
 };
 
+type ApiListing = {
+  id: string;
+  ListingKey?: string;
+  mlsNumber?: string;
+  price?: number;
+  propertyType?: string;
+  beds?: number | string;
+  baths?: number | string;
+  parking?: number | string;
+  dom?: number;
+  address?: string;
+  fullAddress?: string;
+  city?: string;
+  description?: string;
+  sqft?: number | string;
+  garage?: number | string;
+};
+
+const buildImages = (listingKey?: string) => {
+  if (!listingKey) return ["/favicon.ico"];
+  return [0, 1, 2, 3].map((index) => `/api/image/${listingKey}?index=${index}`);
+};
+
+const mapListing = (listing: ApiListing): ListingItem => {
+  const address = listing.address || listing.fullAddress || "Unknown";
+  return {
+    id: listing.id,
+    mlsNumber: listing.mlsNumber || listing.ListingKey || "N/A",
+    address,
+    city: listing.city || "",
+    province: "ON",
+    rent: Number(listing.price) || 0,
+    beds: Number(listing.beds) || 0,
+    baths: Number(listing.baths) || 0,
+    sqft: Number(listing.sqft) || 0,
+    homeType: listing.propertyType || "Residential",
+    parking: String(listing.parking ?? listing.garage ?? "0"),
+    daysOnMarket: Number(listing.dom) || 0,
+    description: listing.description || "",
+    features: [],
+    images: buildImages(listing.ListingKey),
+  };
+};
+
 export default function TenantProperties() {
   const [listingQuery, setListingQuery] = useState("");
   const [trackedQuery, setTrackedQuery] = useState("");
   const [listingActions, setListingActions] = useState<Record<string, ListingActionState>>({});
+  const [listings, setListings] = useState<ListingItem[]>([]);
+  const [listingLoading, setListingLoading] = useState(false);
+  const [listingError, setListingError] = useState<string | null>(null);
 
-  const listings = useMemo(() => {
-    const q = listingQuery.trim().toLowerCase();
-    if (!q) return mockListings;
-    return mockListings.filter(
-      (listing) =>
-        listing.address.toLowerCase().includes(q) ||
-        listing.mlsNumber.toLowerCase().includes(q) ||
-        `${listing.address}, ${listing.city}`.toLowerCase().includes(q),
-    );
+  useEffect(() => {
+    const q = listingQuery.trim();
+    const controller = new AbortController();
+
+    const fetchListings = async () => {
+      setListingLoading(true);
+      setListingError(null);
+      try {
+        const url = q ? `/api/listings?query=${encodeURIComponent(q)}` : "/api/listings";
+        const res = await fetch(url, { signal: controller.signal });
+        if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+        const data = await res.json();
+        const items: ApiListing[] = Array.isArray(data.listings) ? data.listings : [];
+        setListings(items.map(mapListing));
+      } catch (err: any) {
+        if (err?.name === "AbortError") return;
+        setListingError("Failed to load listings. Check the database connection.");
+        setListings([]);
+      } finally {
+        setListingLoading(false);
+      }
+    };
+
+    const timer = setTimeout(fetchListings, q ? 300 : 0);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [listingQuery]);
 
   const rows = useMemo(() => {
@@ -48,7 +114,7 @@ export default function TenantProperties() {
   };
 
   const submitViewingRequest = (listingId: string) => {
-    const listing = mockListings.find((item) => item.id === listingId);
+    const listing = listings.find((item) => item.id === listingId);
     if (!listing) return;
     const requestDate = new Date().toISOString().slice(0, 10);
     const existing = getListingRequests();
@@ -70,7 +136,7 @@ export default function TenantProperties() {
   };
 
   const submitOfferRequest = (listingId: string) => {
-    const listing = mockListings.find((item) => item.id === listingId);
+    const listing = listings.find((item) => item.id === listingId);
     if (!listing) return;
     const requestDate = new Date().toISOString().slice(0, 10);
     const existing = getListingRequests();
@@ -117,6 +183,8 @@ export default function TenantProperties() {
           </Button>
         </div>
         <div className="mt-4 grid gap-4">
+          {listingLoading ? <Muted>Loading listings...</Muted> : null}
+          {listingError ? <div className="text-sm text-red-600">{listingError}</div> : null}
           {listings.map((listing) => (
             <Card key={listing.id} className="border border-neutral-200">
               {listingActions[listing.id]?.agentNotified ? (
@@ -237,7 +305,7 @@ export default function TenantProperties() {
               </div>
             </Card>
           ))}
-          {listings.length === 0 ? <Muted>No listings match that search yet.</Muted> : null}
+          {!listingLoading && listings.length === 0 ? <Muted>No listings match that search yet.</Muted> : null}
         </div>
       </Card>
 
